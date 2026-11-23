@@ -3,66 +3,124 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Banco — Demo de reentrancy</title>
+<title>BancoCripto — Demo de ataques a smart contracts</title>
 <style>
-  body { font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; max-width: 900px; margin: 30px auto; padding: 0 16px; }
-  h1 { margin-bottom: 4px; }
-  .modo { display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: bold; }
-  .vulnerable { background: #7a1f1f; }
-  .mitigada { background: #1f6b3a; }
-  .card { background: #181b22; border: 1px solid #2a2f3a; border-radius: 10px; padding: 16px; margin: 16px 0; }
-  .grande { font-size: 2.2em; font-weight: bold; }
+  :root { --bg:#0e1014; --card:#161a21; --borde:#262c37; --txt:#e4e6ea; --sub:#8b93a3; --ok:#5fd38a; --mal:#ff6b6b; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--txt); max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+  h1 { margin: 0 0 6px; font-size: 1.6em; }
+  h2 { margin: 0 0 4px; font-size: 1.1em; }
+  .sub { color: var(--sub); font-size: .85em; margin: 0 0 12px; }
+  .fila { display: flex; gap: 16px; flex-wrap: wrap; }
+  .fila > .card { flex: 1; min-width: 300px; }
+  .card { background: var(--card); border: 1px solid var(--borde); border-radius: 10px; padding: 16px; margin: 14px 0; }
+  .modo { display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: .85em; }
+  .vulnerable { background: #6e1c1c; } .mitigada { background: #1c5e35; }
+  .chip { display: inline-block; padding: 3px 10px; border-radius: 6px; background: #232836; color: var(--sub); font-size: .8em; margin-left: 6px; }
+  .grande { font-size: 2.2em; font-weight: 700; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px; border-bottom: 1px solid #2a2f3a; font-size: 0.95em; }
-  td.mono { font-family: monospace; font-size: 0.8em; color: #9aa3b2; }
-  button, select, input { padding: 8px 12px; border-radius: 6px; border: 1px solid #3a4050; background: #232733; color: #e6e6e6; cursor: pointer; }
-  button:hover { background: #2e3442; }
-  button.ataque { background: #b02a2a; border-color: #b02a2a; font-weight: bold; }
-  #log { font-family: monospace; font-size: 0.85em; white-space: pre-wrap; max-height: 260px; overflow-y: auto; background: #0b0d10; padding: 10px; border-radius: 6px; }
-  .ok { color: #6fdc8c; } .mal { color: #ff6b6b; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--borde); font-size: .88em; vertical-align: top; }
+  th { color: var(--sub); font-weight: 600; }
+  .mono { font-family: ui-monospace, monospace; font-size: .78em; color: var(--sub); word-break: break-all; }
+  button, select, input { padding: 7px 11px; border-radius: 6px; border: 1px solid #353c4b; background: #212634; color: var(--txt); font-size: .9em; }
+  button { cursor: pointer; } button:hover { background: #2b3243; }
+  button.rojo { background: #a52828; border-color: #a52828; font-weight: 700; } button.rojo:hover { background: #c03232; }
+  button.azul { background: #2c4a8f; border-color: #2c4a8f; }
+  input[type=text] { width: 100%; }
+  .controles { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .ok { color: var(--ok); } .mal { color: var(--mal); }
+  .resultado { margin-top: 12px; padding: 12px; border-radius: 8px; background: #0b0d11; font-size: .88em; display: none; }
+  .barra { height: 16px; background: #a52828; border-radius: 3px; margin: 2px 0; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 4px 10px; }
+  .kv div:nth-child(odd) { color: var(--sub); }
+  #log { font-family: ui-monospace, monospace; font-size: .8em; white-space: pre-wrap; max-height: 220px; overflow-y: auto; }
 </style>
 </head>
 <body>
-  <h1>Banco descentralizado</h1>
-  <span id="modo" class="modo">cargando…</span>
+  <h1>BancoCripto</h1>
+  <span id="modo" class="modo">cargando…</span><span id="esquema" class="chip"></span>
 
-  <div class="card">
-    <div>Balance del contrato Banco</div>
-    <div class="grande"><span id="balance">—</span> ETH</div>
-    <div class="mono" id="direccion"></div>
+  <div class="fila">
+    <div class="card">
+      <div class="sub">Balance del contrato Banco</div>
+      <div class="grande"><span id="balance">—</span> ETH</div>
+      <div class="mono" id="direccion"></div>
+      <div class="sub" id="totalOps"></div>
+    </div>
+    <div class="card" style="flex:2">
+      <table>
+        <thead><tr><th>Cuenta</th><th>Dirección</th><th>Billetera (ETH)</th><th>En el banco (ETH)</th><th id="thNonce">Nonce</th></tr></thead>
+        <tbody id="cuentas"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="card">
+    <h2>Depósito con comprobante cifrado</h2>
+    <p class="sub">La nota se cifra con AES-256-GCM (clave por cuenta derivada con HKDF-SHA256) y se guarda fuera de la cadena. En la blockchain solo queda su hash Keccak-256.</p>
+    <div class="controles">
+      <select id="cuenta">
+        <option value="victima1">victima1</option><option value="victima2">victima2</option>
+        <option value="victima3">victima3</option><option value="atacante">atacante</option>
+      </select>
+      <input id="monto" type="number" value="1" min="0.1" step="0.1" style="width:80px"> ETH
+      <button class="azul" onclick="depositar()">Depositar</button>
+      <button onclick="retirar()">Retirar todo</button>
+    </div>
+    <div class="controles"><input id="nota" type="text" placeholder="Nota del comprobante, ej.: Pago factura #123 — cuenta 04-55-1234"></div>
+    <div id="resDeposito" class="resultado"></div>
+  </div>
+
+  <div class="card">
+    <h2>Comprobantes cifrados — verificación de integridad</h2>
+    <p class="sub">Integridad: Keccak-256 del cifrado guardado contra el hash registrado en la cadena. Autenticidad: tag de GCM. "Alterar" cambia 1 bit del cifrado en la base de datos.</p>
     <table>
-      <thead><tr><th>Cuenta</th><th>Dirección</th><th>Billetera (ETH)</th><th>Saldo en banco (ETH)</th></tr></thead>
-      <tbody id="cuentas"></tbody>
+      <thead><tr><th>Operación</th><th>Cuenta</th><th>Cifrado (AES-256-GCM)</th><th>Keccak</th><th>GCM</th><th>Texto descifrado</th><th></th></tr></thead>
+      <tbody id="comprobantes"><tr><td colspan="7" class="sub">Sin comprobantes todavía</td></tr></tbody>
     </table>
   </div>
 
-  <div class="card">
-    <select id="cuenta">
-      <option value="victima1">victima1</option>
-      <option value="victima2">victima2</option>
-      <option value="victima3">victima3</option>
-      <option value="atacante">atacante</option>
-    </select>
-    <input id="monto" type="number" value="1" min="0.1" step="0.1" style="width:80px"> ETH
-    <button onclick="depositar()">Depositar</button>
-    <button onclick="retirar()">Retirar</button>
-    <button onclick="cargar()">Actualizar</button>
-    <button class="ataque" onclick="atacar()">Lanzar ataque</button>
+  <div class="fila">
+    <div class="card">
+      <h2>Ataque 1 — Reentrancy</h2>
+      <p class="sub">El contrato Atacante deposita 1 ETH y lo retira. Al recibir el ETH, su receive() vuelve a llamar a retirar() antes de que el banco ponga su saldo en 0.</p>
+      <button class="rojo" onclick="atacar()">Lanzar reentrancy</button>
+      <div id="resReentrancy" class="resultado"></div>
+    </div>
+
+    <div class="card">
+      <h2>Ataque 2 — Replay de firmas</h2>
+      <p class="sub">1) La víctima firma un pago fuera de la cadena y el destinatario lo cobra. 2) El atacante lee esa transacción (los datos en la blockchain son públicos), extrae la firma ECDSA y la reenvía.</p>
+      <div class="controles">
+        <select id="pagador"><option>victima1</option><option>victima2</option><option>victima3</option></select>
+        paga <input id="montoPago" type="number" value="1" min="0.1" step="0.1" style="width:70px"> ETH a atacante
+        <button class="azul" onclick="pagoFirmado()">1. Pago firmado legítimo</button>
+      </div>
+      <div class="controles">
+        Reenviar <input id="veces" type="number" value="3" min="1" max="10" style="width:60px"> veces
+        <button class="rojo" onclick="replay()">2. Lanzar replay</button>
+      </div>
+      <div id="resFirma" class="resultado"></div>
+      <div id="resReplay" class="resultado"></div>
+    </div>
   </div>
 
-  <div class="card"><div id="log"></div></div>
+  <div class="card"><h2>Registro</h2><div id="log"></div></div>
 
 <script>
-  const log = (txt, clase) => {
-    const el = document.getElementById("log");
-    el.innerHTML = `<div class="${clase || ""}">[${new Date().toLocaleTimeString()}] ${txt}</div>` + el.innerHTML;
-  };
+  const $ = (id) => document.getElementById(id);
+  const corto = (h) => h ? h.slice(0, 10) + "…" + h.slice(-6) : "";
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const marca = (b) => b ? '<span class="ok">✔</span>' : '<span class="mal">✘</span>';
+
+  function log(txt, clase) {
+    $("log").innerHTML = `<div class="${clase || ""}">[${new Date().toLocaleTimeString()}] ${esc(txt)}</div>` + $("log").innerHTML;
+  }
+
+  function mostrar(id, html) { $(id).style.display = "block"; $(id).innerHTML = html; }
 
   async function api(ruta, body) {
-    const r = await fetch(ruta, body ? {
+    const r = await fetch(ruta, body !== undefined ? {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body)
     } : undefined);
     const data = await r.json();
@@ -73,42 +131,117 @@
   async function cargar() {
     try {
       const e = await api("/estado");
-      const m = document.getElementById("modo");
-      m.textContent = e.modo === "mitigada" ? "VERSIÓN MITIGADA" : "VERSIÓN VULNERABLE";
-      m.className = "modo " + e.modo;
-      document.getElementById("balance").textContent = e.balanceBanco;
-      document.getElementById("direccion").textContent = "Contrato: " + e.banco;
-      document.getElementById("cuentas").innerHTML = Object.entries(e.cuentas).map(([n, c]) =>
-        `<tr><td>${n}</td><td class="mono">${c.direccion}</td><td>${Number(c.billetera).toFixed(4)}</td><td>${c.saldoEnBanco}</td></tr>`
-      ).join("");
+      $("modo").textContent = e.modo === "mitigada" ? "VERSIÓN MITIGADA" : "VERSIÓN VULNERABLE";
+      $("modo").className = "modo " + e.modo;
+      $("esquema").textContent = "Firmas: " + e.esquemaFirma;
+      $("balance").textContent = e.balanceBanco;
+      $("direccion").textContent = "Contrato: " + e.banco;
+      $("totalOps").textContent = "Operaciones registradas: " + e.totalOperaciones;
+      const conNonce = Object.values(e.cuentas)[0].nonce !== undefined;
+      $("thNonce").style.display = conNonce ? "" : "none";
+      $("cuentas").innerHTML = Object.entries(e.cuentas).map(([n, c]) =>
+        `<tr><td>${n}</td><td class="mono">${c.direccion}</td><td>${Number(c.billetera).toFixed(4)}</td><td>${c.saldoEnBanco}</td>` +
+        (conNonce ? `<td>${c.nonce}</td>` : "") + `</tr>`).join("");
+    } catch (err) { log(err.message, "mal"); }
+  }
+
+  async function cargarComprobantes() {
+    try {
+      const lista = await api("/operaciones");
+      if (!lista.length) return;
+      $("comprobantes").innerHTML = lista.map((c) => `<tr>
+        <td class="mono" title="${c.idOperacion}">${corto(c.idOperacion)}</td>
+        <td>${c.cuenta}<br><span class="sub">${c.monto} ETH</span></td>
+        <td class="mono">IV ${c.iv}<br>${corto("0x" + c.cifrado)}<br>tag ${corto(c.tag)}</td>
+        <td>${marca(c.integridad)} <span class="mono" title="en cadena: ${c.hashEnCadena} / calculado: ${c.hashCalculado}">${corto(c.hashEnCadena)}</span></td>
+        <td>${marca(c.autenticado)}</td>
+        <td>${c.autenticado ? esc(c.texto) : '<span class="mal">' + esc(c.errorDescifrado) + '</span>'}</td>
+        <td><button onclick="alterar('${c.idOperacion}')">Alterar</button></td></tr>`).join("");
     } catch (err) { log(err.message, "mal"); }
   }
 
   async function depositar() {
     try {
-      const r = await api("/depositar", { cuenta: document.getElementById("cuenta").value, monto: document.getElementById("monto").value });
+      const r = await api("/depositar", { cuenta: $("cuenta").value, monto: $("monto").value, nota: $("nota").value });
       log(r.mensaje, "ok");
+      mostrar("resDeposito", `<div class="kv">
+        <div>Id operación</div><div class="mono">${r.idOperacion}</div>
+        <div>Hash en cadena</div><div class="mono">${r.hashComprobante}</div>
+        ${r.comprobanteCifrado ? `<div>IV (96 bits)</div><div class="mono">${r.comprobanteCifrado.iv}</div>
+        <div>Texto cifrado</div><div class="mono">${r.comprobanteCifrado.cifrado}</div>
+        <div>Tag GCM</div><div class="mono">${r.comprobanteCifrado.tag}</div>` : `<div>Comprobante</div><div class="sub">sin nota (hash = 0x0)</div>`}
+        <div>Transacción</div><div class="mono">${r.tx}</div></div>`);
+      $("nota").value = "";
     } catch (err) { log(err.message, "mal"); }
-    cargar();
+    cargar(); cargarComprobantes();
   }
 
   async function retirar() {
-    try { log((await api("/retirar", { cuenta: document.getElementById("cuenta").value })).mensaje, "ok"); }
+    try { log((await api("/retirar", { cuenta: $("cuenta").value })).mensaje, "ok"); }
     catch (err) { log(err.message, "mal"); }
     cargar();
+  }
+
+  async function alterar(id) {
+    try { log((await api(`/comprobante/${id}/alterar`, {})).mensaje, "mal"); }
+    catch (err) { log(err.message, "mal"); }
+    cargarComprobantes();
   }
 
   async function atacar() {
     log("Desplegando contrato Atacante y lanzando reentrancy…");
     try {
       const r = await api("/atacar", {});
-      log(r.mensaje + (r.exito ? ` (robado: ${r.robado} ETH)` : ""), r.exito ? "mal" : "ok");
-      if (r.error) log("Revert del contrato: " + r.error);
+      log(r.mensaje, r.exito ? "mal" : "ok");
+      const max = Math.max(1, ...r.reentradas.map((x) => Number(x.balanceBanco)));
+      mostrar("resReentrancy", `<div class="${r.exito ? "mal" : "ok"}"><b>${esc(r.mensaje)}</b></div>
+        <div class="kv" style="margin-top:8px">
+          <div>Banco antes</div><div>${r.balanceBancoAntes} ETH</div>
+          <div>Banco después</div><div>${r.balanceBancoDespues} ETH</div>
+          <div>Robado</div><div>${r.robado} ETH</div>
+          ${r.error ? `<div>Revert</div><div class="ok">${esc(r.error)}</div>` : ""}
+        </div>
+        ${r.reentradas.map((x) => `<div class="sub">Reentrada #${x.numero} — banco con ${x.balanceBanco} ETH</div>
+          <div class="barra" style="width:${(Number(x.balanceBanco) / max) * 100}%"></div>`).join("")}`);
     } catch (err) { log(err.message, "mal"); }
     cargar();
   }
 
-  cargar();
+  async function pagoFirmado() {
+    try {
+      const r = await api("/pago-firmado", { cuenta: $("pagador").value, destinatario: "atacante", monto: $("montoPago").value });
+      log(r.mensaje, "ok");
+      mostrar("resFirma", `<b>Firma ${esc(r.esquema)}</b><div class="kv" style="margin-top:8px">
+        ${r.dominio ? `<div>Dominio</div><div class="mono">${esc(JSON.stringify(r.dominio))}</div>` : `<div>Dominio</div><div class="mal">ninguno (sin chainId ni contrato)</div>`}
+        <div>Datos firmados</div><div class="mono">${esc(JSON.stringify(r.datosFirmados))}</div>
+        <div>Digest</div><div class="mono">${r.digest}</div>
+        <div>r</div><div class="mono">${r.r}</div>
+        <div>s</div><div class="mono">${r.s}</div>
+        <div>v</div><div class="mono">${r.v}</div>
+        <div>Transacción</div><div class="mono">${r.tx}</div></div>`);
+    } catch (err) { log(err.message, "mal"); }
+    cargar();
+  }
+
+  async function replay() {
+    log("El atacante busca la última firma en la blockchain y la reenvía…");
+    try {
+      const r = await api("/ataque-replay", { veces: $("veces").value });
+      log(r.mensaje, r.exito ? "mal" : "ok");
+      mostrar("resReplay", `<div class="${r.exito ? "mal" : "ok"}"><b>${esc(r.mensaje)}</b></div>
+        <div class="kv" style="margin-top:8px">
+          <div>Firma reutilizada</div><div class="mono">${r.firmaReutilizada}</div>
+          <div>Tx original</div><div class="mono">${r.txOriginal}</div>
+          <div>Saldo ${r.titular}</div><div>${r.saldoTitularAntes} → ${r.saldoTitularDespues} ETH</div>
+        </div>
+        <table style="margin-top:8px"><tr><th>Intento</th><th>Resultado</th><th>Saldo de ${r.titular}</th></tr>
+        ${r.intentos.map((i) => `<tr><td>#${i.intento}</td><td class="${i.ok ? "mal" : "ok"}">${i.ok ? "Cobrado" : "Revertido: " + esc(i.error)}</td><td>${i.saldoTitular} ETH</td></tr>`).join("")}
+        </table>`);
+    } catch (err) { log(err.message, "mal"); }
+    cargar();
+  }
+
+  cargar(); cargarComprobantes();
   setInterval(cargar, 5000);
 </script>
 </body>

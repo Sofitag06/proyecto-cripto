@@ -9,6 +9,7 @@ COPY ${STACK}/contracts/hardhat.config.js ./
 COPY ${STACK}/contracts/contracts ./contracts
 COPY ataques/contracts/Atacante.sol ./contracts/Atacante.sol
 COPY ${STACK}/contracts/scripts ./scripts
+COPY ${STACK}/contracts/test ./test
 RUN npx hardhat compile
 COPY docker/start-chain.sh /start-chain.sh
 EXPOSE 8545

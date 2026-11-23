@@ -1,0 +1,6 @@
+{
+  "name": "ataques",
+  "private": true,
+  "description": "Scripts de ataque contra el Banco (reentrancy y replay de firmas)",
+  "dependencies": { "ethers": "^6.13.0" }
+}

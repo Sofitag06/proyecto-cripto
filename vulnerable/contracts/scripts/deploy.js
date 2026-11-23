@@ -22,13 +22,14 @@ async function main() {
   // Víctimas (cuentas 1, 2 y 3) depositan 10 ETH en total
   const depositos = [[1, "3"], [2, "3"], [3, "4"]];
   for (const [i, monto] of depositos) {
-    const tx = await banco.connect(signers[i]).depositar({ value: hre.ethers.parseEther(monto) });
+    const tx = await banco.connect(signers[i]).depositar(hre.ethers.ZeroHash, { value: hre.ethers.parseEther(monto) });
     await tx.wait();
   }
 
   const bancoArt = await hre.artifacts.readArtifact("Banco");
   const atacanteArt = await hre.artifacts.readArtifact("Atacante");
   const salida = {
+    idDespliegue: Date.now(),
     banco: { address: direccion, abi: bancoArt.abi },
     atacante: { abi: atacanteArt.abi, bytecode: atacanteArt.bytecode }
   };

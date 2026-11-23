@@ -14,7 +14,11 @@ services:
     environment:
       MODO: vulnerable
       RPC_URL: http://chain-vulnerable:8545
-    volumes: [shared-vulnerable:/shared:ro]
+      # Clave maestra AES-256 SOLO para la demo (en producción va en un gestor de secretos)
+      CLAVE_MAESTRA: ${CLAVE_MAESTRA:-4f1c2a9e7b3d5f8061a2c4e6b8d0f13579bdf02468ace13579bdf02468ace135}
+    volumes:
+      - shared-vulnerable:/shared:ro
+      - datos-vulnerable:/data
     networks: [red-vulnerable]
     ports: ["3001:3000"]
     depends_on: [chain-vulnerable]
@@ -33,14 +37,20 @@ services:
     environment:
       MODO: mitigada
       RPC_URL: http://chain-mitigada:8545
-    volumes: [shared-mitigada:/shared:ro]
+      # Clave maestra AES-256 SOLO para la demo (en producción va en un gestor de secretos)
+      CLAVE_MAESTRA: ${CLAVE_MAESTRA:-4f1c2a9e7b3d5f8061a2c4e6b8d0f13579bdf02468ace13579bdf02468ace135}
+    volumes:
+      - shared-mitigada:/shared:ro
+      - datos-mitigada:/data
     networks: [red-mitigada]
     ports: ["3002:3000"]
     depends_on: [chain-mitigada]
 
 volumes:
   shared-vulnerable:
+  datos-vulnerable:
   shared-mitigada:
+  datos-mitigada:
 
 networks:
   red-vulnerable:
