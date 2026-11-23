@@ -1,0 +1,47 @@
+# Dos stacks idénticos y aislados: vulnerable (puerto 3001) y mitigada (puerto 3002)
+services:
+  chain-vulnerable:
+    build:
+      context: .
+      dockerfile: docker/chain.Dockerfile
+      args: { STACK: vulnerable }
+    volumes: [shared-vulnerable:/shared]
+    networks: [red-vulnerable]
+    ports: ["8545:8545"]
+
+  app-vulnerable:
+    build: ./app
+    environment:
+      MODO: vulnerable
+      RPC_URL: http://chain-vulnerable:8545
+    volumes: [shared-vulnerable:/shared:ro]
+    networks: [red-vulnerable]
+    ports: ["3001:3000"]
+    depends_on: [chain-vulnerable]
+
+  chain-mitigada:
+    build:
+      context: .
+      dockerfile: docker/chain.Dockerfile
+      args: { STACK: mitigada }
+    volumes: [shared-mitigada:/shared]
+    networks: [red-mitigada]
+    ports: ["8546:8545"]
+
+  app-mitigada:
+    build: ./app
+    environment:
+      MODO: mitigada
+      RPC_URL: http://chain-mitigada:8545
+    volumes: [shared-mitigada:/shared:ro]
+    networks: [red-mitigada]
+    ports: ["3002:3000"]
+    depends_on: [chain-mitigada]
+
+volumes:
+  shared-vulnerable:
+  shared-mitigada:
+
+networks:
+  red-vulnerable:
+  red-mitigada:

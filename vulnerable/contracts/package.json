@@ -1,0 +1,9 @@
+{
+  "name": "banco-contracts",
+  "private": true,
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "hh2",
+    "@openzeppelin/contracts": "^5.0.0",
+    "hardhat": "^2.22.0"
+  }
+}
