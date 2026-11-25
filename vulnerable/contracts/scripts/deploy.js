@@ -20,7 +20,7 @@ async function main() {
   const direccion = await banco.getAddress();
 
   // Víctimas (cuentas 1, 2 y 3) depositan 10 ETH en total
-  const depositos = [[1, "3"], [2, "3"], [3, "4"]];
+  const depositos = [[1, "10"], [2, "10"], [3, "10"]];
   for (const [i, monto] of depositos) {
     const tx = await banco.connect(signers[i]).depositar(hre.ethers.ZeroHash, { value: hre.ethers.parseEther(monto) });
     await tx.wait();
@@ -38,7 +38,7 @@ async function main() {
   fs.mkdirSync(path.dirname(destino), { recursive: true });
   fs.writeFileSync(destino, JSON.stringify(salida, null, 2));
   console.log(`Banco desplegado en ${direccion}`);
-  console.log("Banco cargado con 10 ETH de víctimas");
+  console.log("Banco cargado con 30 ETH de víctimas");
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

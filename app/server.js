@@ -196,6 +196,19 @@ app.post("/retirar", ruta(async (req) => {
   return { ok: true, mensaje: `${cuenta} retiró su saldo`, tx: tx.hash };
 }));
 
+// Recarga el banco para repetir el ataque sin reiniciar Docker (solo demo).
+// Cada víctima deposita 10 ETH para reponer el ETH real del contrato (tras la reentrancy
+// el banco queda insolvente: los saldos siguen altos pero el contrato no tiene fondos).
+app.post("/recargar", ruta(async () => {
+  const detalle = [];
+  for (const nombre of ["victima1", "victima2", "victima3"]) {
+    const w = billetera(nombre);
+    await (await banco(w).depositar(ethers.ZeroHash, { value: ethers.parseEther("10") })).wait();
+    detalle.push(`${nombre} +10 ETH`);
+  }
+  return { ok: true, mensaje: `Banco recargado: ${eth(await banco().balanceContrato())} ETH`, detalle };
+}));
+
 // ---------- pago firmado (legítimo) ----------
 // El titular firma fuera de la cadena; el destinatario envía la transacción (el titular no paga gas)
 app.post("/pago-firmado", ruta(async (req) => {

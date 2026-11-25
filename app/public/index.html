@@ -66,6 +66,7 @@
       <input id="monto" type="number" value="1" min="0.1" step="0.1" style="width:80px"> ETH
       <button class="azul" onclick="depositar()">Depositar</button>
       <button onclick="retirar()">Retirar todo</button>
+      <button onclick="recargar()" title="Vuelve a dejar el banco en 30 ETH para repetir el ataque">Recargar banco (demo)</button>
     </div>
     <div class="controles"><input id="nota" type="text" placeholder="Nota del comprobante, ej.: Pago factura #123 — cuenta 04-55-1234"></div>
     <div id="resDeposito" class="resultado"></div>
@@ -178,6 +179,12 @@
 
   async function retirar() {
     try { log((await api("/retirar", { cuenta: $("cuenta").value })).mensaje, "ok"); }
+    catch (err) { log(err.message, "mal"); }
+    cargar();
+  }
+
+  async function recargar() {
+    try { log((await api("/recargar", {})).mensaje, "ok"); }
     catch (err) { log(err.message, "mal"); }
     cargar();
   }
